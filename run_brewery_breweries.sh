@@ -1,0 +1,4 @@
+docker exec  docker-pyspark-1 spark-submit setup/scripts/capture_api.py --table_name breweries --source brewery --email_on_failure carlosquintino3105@gmail.com
+docker exec  docker-pyspark-1 spark-submit setup/scripts/bronze_to_silver.py --table_name breweries --source brewery --email_on_failure carlosquintino3105@gmail.com
+docker exec  docker-pyspark-1 spark-submit setup/scripts/silver_to_gold.py --table_name oregon_breweries --source silver --email_on_failure carlosquintino3105@gmail.com
+docker exec  docker-pyspark-1 spark-submit setup/scripts/data_quality.py --table_name breweries --email_on_failure carlosquintino3105@gmail.com
