@@ -1,0 +1,12 @@
+{"quality_params":{
+    "not_null": {  
+        "column": "id,name,brewery_type,city,state_province,country"
+    },
+    "unique_vals": { 
+        "column": "id"  
+    },
+    "value_lenght_btw": {  
+        "column": "postal_code,phone",
+        "min": "5,1",  
+        "max": "10,1"  
+    }}}

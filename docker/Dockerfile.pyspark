@@ -1,0 +1,17 @@
+FROM jupyter/pyspark-notebook:latest
+USER root
+
+
+WORKDIR /home/jovyan
+
+RUN mkdir -p /home/jovyan/setup/scripts /home/jovyan/setup/params /home/jovyan/setup/query/
+
+
+COPY ./scripts/*.py /home/jovyan/setup/scripts/
+COPY ./params/ /home/jovyan/setup/params/
+COPY ./query/ /home/jovyan/setup/query/
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+

@@ -1,0 +1,2 @@
+boto3
+great_expectations==0.18.19

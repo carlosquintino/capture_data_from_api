@@ -1,0 +1,23 @@
+{"url":"https://api.openbrewerydb.org/v1/breweries",
+"schema":{
+    "id":"STRING",
+    "name":"STRING",
+    "brewery_type": "STRING",
+    "address_1": "STRING",
+    "address_2": "STRING",
+    "address_3": "STRING",
+    "city": "STRING",
+    "state_province": "STRING",
+    "postal_code": "STRING",
+    "country": "STRING",
+    "longitude": "DOUBLE",
+    "latitude": "DOUBLE",
+    "phone": "STRING",
+    "website_url": "STRING",
+    "state": "STRING",
+    "street": "STRING"
+},
+"target_table":"breweries",
+"target_schema":"silver_brewery",
+"partition_column":"state",
+"mode":"overwrite"}

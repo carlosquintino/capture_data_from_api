@@ -1,0 +1,1 @@
+select * from silver_brewery.breweries;

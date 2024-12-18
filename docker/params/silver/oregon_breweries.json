@@ -1,0 +1,4 @@
+{"target_table":"oregon_breweries",
+"target_schema":"gold_brewery",
+"partition_column":"brewery_type",
+"mode":"overwrite"}

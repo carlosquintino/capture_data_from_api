@@ -1,0 +1,275 @@
+version: "3.8"
+
+services:
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    volumes:
+      - namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop-hive.env
+    ports:
+      - "50070:50070"
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    volumes:
+      - datanode:/hadoop/dfs/data
+    env_file:
+      - ./hadoop-hive.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070"
+    ports:
+      - "50075:50075"
+
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    env_file:
+      - ./hadoop-hive.env
+    environment:
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+    ports:
+      - "10000:10000"
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    env_file:
+      - ./hadoop-hive.env
+    command: /opt/hive/bin/hive --service metastore
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-postgresql:5432"
+    ports:
+      - "9083:9083"
+
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+
+  presto-coordinator:
+    image: shawnzhu/prestodb:0.181
+    ports:
+      - "8080:8080"
+
+  pyspark:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.pyspark
+    image: jupyter/pyspark-notebook:latest
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4g
+      - SPARK_CONF_spark.executor.heartbeatInterval=60s
+      - SPARK_CONF_spark.network.timeout=900s
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    command: start-notebook.sh --NotebookApp.token=''
+
+  spark-master:
+    image: bde2020/spark-master:2.4.0-hadoop2.7
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+      - SPARK_CONF_spark.executor.heartbeatInterval=60s
+      - SPARK_CONF_spark.network.timeout=900s
+    ports:
+      - "7077:7077"
+      - "8081:8081"
+
+  spark-worker:
+    image: bde2020/spark-worker:2.4.0-hadoop2.7
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4g
+      - SPARK_CONF_spark.executor.heartbeatInterval=60s
+      - SPARK_CONF_spark.network.timeout=900s
+    depends_on:
+      - spark-master
+
+  # postgres:
+  #   image: postgres:13
+  #   environment:
+  #     POSTGRES_USER: airflow
+  #     POSTGRES_PASSWORD: airflow
+  #     POSTGRES_DB: airflow
+  #   volumes:
+  #     - postgres-db-volume:/var/lib/postgresql/data
+  #     - ./init-scripts:/docker-entrypoint-initdb.d
+  #   healthcheck:
+  #     test: ["CMD", "pg_isready", "-U", "airflow"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 5s
+  #   restart: always
+
+  # redis:
+  #   image: redis:latest
+  #   expose:
+  #     - 6379
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 30s
+  #     retries: 50
+  #     start_period: 30s
+  #   restart: always
+
+  # airflow-webserver:
+  #   image: apache/airflow:2.8.1
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+  #     AIRFLOW__CORE__FERNET_KEY: ''
+  #     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+  #     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+  #     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+  #     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags
+  #     - ./logs:/opt/airflow/logs
+  #     - ./plugins:/opt/airflow/plugins
+  #   ports:
+  #     - "8082:8080"  # Adjusted to avoid port conflict
+  #   healthcheck:
+  #     test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     airflow-init:
+  #       condition: service_completed_successfully
+
+  # airflow-scheduler:
+  #   image: apache/airflow:2.8.1
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags
+  #     - ./logs:/opt/airflow/logs
+  #     - ./plugins:/opt/airflow/plugins
+  #   command: scheduler
+  #   healthcheck:
+  #     test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     airflow-init:
+  #       condition: service_completed_successfully
+
+  # airflow-worker:
+  #   image: apache/airflow:2.8.1
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+  #     DUMB_INIT_SETSID: "0"  # For proper shutdown handling
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags
+  #     - ./logs:/opt/airflow/logs
+  #     - ./plugins:/opt/airflow/plugins
+  #   command: celery worker
+  #   healthcheck:
+  #     test:
+  #       - "CMD-SHELL"
+  #       - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     airflow-init:
+  #       condition: service_completed_successfully
+
+  
+  # airflow-init:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.airflow
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+  #   command:
+  #     - bash
+  #     - -c
+  #     - |
+  #       airflow db upgrade &&
+  #       airflow users create --username admin --password admin --firstname Admin --lastname Admin --role Admin --email admin@example.com
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags
+  #     - ./logs:/opt/airflow/logs
+  #     - ./plugins:/opt/airflow/plugins
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+
+  # flower:
+  #   image: apache/airflow:2.8.1
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+  #     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags
+  #     - ./logs:/opt/airflow/logs
+  #     - ./plugins:/opt/airflow/plugins
+  #   command: celery flower
+  #   ports:
+  #     - "5555:5555"
+  #   healthcheck:
+  #     test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     airflow-init:
+  #       condition: service_completed_successfully
+
+volumes:
+  namenode:
+  datanode:
+  notebooks:
+  ddls_volume:
+  # dags:
+  # logs:
+  # plugins:
+  # postgres-db-volume:

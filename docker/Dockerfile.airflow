@@ -1,0 +1,5 @@
+FROM apache/airflow:2.8.1
+
+# Instalar pacotes adicionais como o usuário airflow
+USER airflow
+RUN pip install --no-cache-dir "apache-airflow[celery,postgres]"
