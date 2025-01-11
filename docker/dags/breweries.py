@@ -64,7 +64,6 @@ with DAG(
         docker exec docker-pyspark-1 \
         spark-submit setup/scripts/data_quality.py \
         --table_name breweries \
-        --source quality \
         --email_on_failure carlosquintino3105@gmail.com
         """
     )

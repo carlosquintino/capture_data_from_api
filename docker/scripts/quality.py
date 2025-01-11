@@ -219,15 +219,17 @@ class Quality(Utils):
             self.subject = self.subject.format(status="failed")
             self.report += '\n</table>\n</body>\n</html>'
 
+            print("Falha em teste")
+            print(self.report)
             super().send_email(logger=logger,
                                recipient=self.destination_on_failure,
                                body=self.report,
                                subject=self.subject)
 
             if self.stop_job:
-                raise Exception(f"Um dos testes de qualidade falhou")
+                raise Exception(f"One of data quality test return with failure")
         
-        elif self.destination_on_success:
+        elif self.destination_on_success and not self.failed_expectation:
 
             self.report = self.report.format(color='green')
             self.subject = self.subject.format(status="Success")
